@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import random
 from collections import defaultdict
-
+import os
 
 
 app = Flask(__name__)
@@ -189,5 +189,9 @@ def generate_schedule_api():
     return jsonify(schedule)
 
 
+#if __name__ == "__main__":
+ #   app.run(host='0.0.0.0', port=8080)
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get("PORT", 8080))  # 환경 변수 PORT 사용, 없으면 8080 사용
+    app.run(host='0.0.0.0', port=port)
