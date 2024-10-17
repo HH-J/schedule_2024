@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import random
 from collections import defaultdict
@@ -6,6 +7,37 @@ from collections import defaultdict
 
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # 세션을 사용하기 위한 비밀 키 설정
+
+# 기본 비밀번호 설정 (여기서는 'password'를 예시로 사용)
+password_hash = generate_password_hash('asan1234..')
+
+@app.route('/')
+def index():
+    # 로그인 여부 확인
+    if 'logged_in' in session:
+        return render_template('index.html')  # 로그인 성공 시 index.html 반환
+    return redirect(url_for('login'))  # 로그인하지 않은 경우 로그인 페이지로 리다이렉션
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form['password']
+        if check_password_hash(password_hash, password):
+            session['logged_in'] = True  # 로그인 성공 시 세션에 설정
+            return redirect(url_for('index'))
+        else:
+            return '비밀번호가 잘못되었습니다.'
+    return render_template('login.html')  # GET 요청 시 로그인 페이지 반환
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)  # 세션에서 logged_in 제거
+    return redirect(url_for('login'))  # 로그아웃 후 로그인 페이지로 리다이렉션
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    
 
 # 근무자 리스트
 employees = [
