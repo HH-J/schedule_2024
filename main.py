@@ -1,38 +1,11 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 import random
 from collections import defaultdict
-import os
+
+
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # 세션을 사용하기 위한 비밀 키 설정
-
-# 기본 비밀번호 설정 (여기서는 'password'를 예시로 사용)
-password_hash = generate_password_hash('asan1234..')
-
-@app.route('/')
-def index():
-    # 로그인 여부 확인
-    if 'logged_in' in session:
-        return render_template('index.html')  # 로그인 성공 시 index.html 반환
-    return redirect(url_for('login'))  # 로그인하지 않은 경우 로그인 페이지로 리다이렉션
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        password = request.form['password']
-        if check_password_hash(password_hash, password):
-            session['logged_in'] = True  # 로그인 성공 시 세션에 설정
-            return redirect(url_for('index'))
-        else:
-            return '비밀번호가 잘못되었습니다.'
-    return render_template('login.html')  # GET 요청 시 로그인 페이지 반환
-
-@app.route('/logout')
-def logout():
-    session.pop('logged_in', None)  # 세션에서 logged_in 제거
-    return redirect(url_for('login'))  # 로그아웃 후 로그인 페이지로 리다이렉션
 
 # 근무자 리스트
 employees = [
@@ -52,8 +25,10 @@ english_to_korean_day = {
     'Sunday': '일'
 }
 
+
 # 스케줄 생성 함수
-def generate_schedule(employees, unavailable_info, excluded_employees, start_date):
+def generate_schedule(employees, unavailable_info, excluded_employees,
+                      start_date):
     # 제외된 근무자 제거
     available_employees = [
         emp for emp in employees if emp not in excluded_employees
@@ -87,24 +62,32 @@ def generate_schedule(employees, unavailable_info, excluded_employees, start_dat
 
         # 각 근무자에 대해 근무 가능 여부를 체크
         for emp in available_employees:
-            emp_unavail_days = unavailable_info.get(emp, {}).get('unavailable_days', [])
-            emp_unavail_dates = unavailable_info.get(emp, {}).get('unavailable_dates', [])
+            emp_unavail_days = unavailable_info.get(emp, {}).get(
+                'unavailable_days', [])
+            emp_unavail_dates = unavailable_info.get(emp, {}).get(
+                'unavailable_dates', [])
             last_assigned_date = assigned_dates[emp]
 
             # 해당 요일과 날짜가 근무 불가 날짜에 해당하는지 체크
-            if (day_of_week_korean not in emp_unavail_days and date_str not in emp_unavail_dates):
-                if last_assigned_date is None or (date - last_assigned_date).days >= 3:  # 최소 3일 간격
+            if (day_of_week_korean not in emp_unavail_days
+                    and date_str not in emp_unavail_dates):
+                if last_assigned_date is None or (
+                        date - last_assigned_date).days >= 3:  # 최소 3일 간격
                     available_for_day.append(emp)
 
         # 근무자 간의 근무 일수 차이를 최소화하기 위한 로직
         if available_for_day:
             # 주말이면 2일 근무로 계산
             if day_of_week in ['Saturday', 'Sunday']:
-                chosen_employees = select_employees_equally(available_for_day, work_count, is_weekend=True)
+                chosen_employees = select_employees_equally(available_for_day,
+                                                            work_count,
+                                                            is_weekend=True)
                 for emp in chosen_employees:
                     work_count[emp]['weekend'] += 2
             else:  # 주중이면 1일 근무로 계산
-                chosen_employees = select_employees_equally(available_for_day, work_count, is_weekend=False)
+                chosen_employees = select_employees_equally(available_for_day,
+                                                            work_count,
+                                                            is_weekend=False)
                 for emp in chosen_employees:
                     work_count[emp]['weekday'] += 1
 
@@ -117,6 +100,7 @@ def generate_schedule(employees, unavailable_info, excluded_employees, start_dat
         date += timedelta(days=1)
 
     return schedule
+
 
 # 가중치 기반으로 근무자를 선택하되, 랜덤하게 배정하는 함수
 def select_employees_equally(available_employees, work_count, is_weekend):
@@ -140,10 +124,16 @@ def select_employees_equally(available_employees, work_count, is_weekend):
     # 상위 5명 중에서 랜덤으로 3명 선택 (최대 3명)
     selected_employees = random.sample(
         [emp for emp, _ in employee_weights[:min(5, len(employee_weights))]],
-        min(3, len(employee_weights))
-    )
+        min(3, len(employee_weights)))
 
     return selected_employees
+
+
+# 메인 페이지 라우팅
+@app.route('/')
+def index():
+    return render_template('index.html', employees=employees)
+
 
 # 스케줄 생성 API
 @app.route('/generate_schedule', methods=['POST'])
@@ -161,10 +151,11 @@ def generate_schedule_api():
         start_date = datetime.now().strftime('%Y-%m-%d')
 
     # 스케줄 생성 함수 호출
-    schedule = generate_schedule(employees, unavailable_info, excluded_employees, start_date)
+    schedule = generate_schedule(employees, unavailable_info,
+                                 excluded_employees, start_date)
 
     return jsonify(schedule)
 
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))  # 환경 변수 PORT 사용, 없으면 8080 사용
-    app.run(host='0.0.0.0', port=port)  # 여기서 0.0.0.0에 바인딩
+    app.run(host='0.0.0.0', port=8080)
